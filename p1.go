@@ -16,7 +16,7 @@ func NewP1(rd io.Reader) P1 {
 
 // Read reads data into p. It returns the number of bytes read into p. It reads
 // till it encounters a `!` byte.
-func (p1 *P1) Read(p []byte) (n int, err error) {
+func (p1 P1) Read(p []byte) (n int, err error) {
 	b, err := p1.rd.ReadBytes('!')
 	p = append(p, b...)
 
