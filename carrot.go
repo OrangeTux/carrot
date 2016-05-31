@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/influxdata/influxdb/client/v2"
 	"github.com/tarm/serial"
@@ -55,59 +53,29 @@ func main() {
 	}
 
 	scanner := bufio.NewScanner(bufio.NewReader(s))
+	scanner.Split(SplitTelegram)
 
-	r, err := regexp.Compile("(.*)\\(([^\\*]*)(?:\\*(.*))?\\)")
-
+	bp, err := client.NewBatchPoints(batch_point_config)
 	if err != nil {
-		panic(fmt.Sprintf("Regex didn't compile: %s", err))
+		panic(fmt.Sprintf("Could not create batch poitns: %s", err))
 	}
 
-	var bp client.BatchPoints
-	var fields map[string]interface{}
-
 	for scanner.Scan() {
-		l := scanner.Text()
+		t := Telegram{}
+		t.UnmarshalBinary(scanner.Bytes())
 
-		if strings.Contains(l, "KAIFA") {
-			if bp != nil {
-				// Write old one
-				pt, _ := client.NewPoint("energy_usage", make(map[string]string), fields)
-				bp.AddPoint(pt)
-				err = influx_client.Write(bp)
+		pt, _ := client.NewPoint(
+			"energy_usage",
+			map[string]string{"equiment_id": strconv.Itoa(t.EquipmentId)},
+			map[string]interface{}{
+				"electricity_actual_usage":              t.CurrentPowerUsage,
+				"electricity_total_usage_normal_tariff": t.PowerUsedNormalTariff,
+				"electricity_total_usage_low_tariff":    t.PowerUsedLowTariff,
+				"gas_total_usage":                       t.GasUsed,
+			})
 
-				if err != nil {
-					panic(fmt.Sprintf("Could not write points to influx: %s", err))
-				}
-			}
-
-			bp, err = client.NewBatchPoints(batch_point_config)
-			fields = make(map[string]interface{})
-
-			if err != nil {
-				panic(fmt.Sprintf("Could not create batch poitns: %s", err))
-			}
-
-		}
-		matches := r.FindStringSubmatch(l)
-
-		if len(matches) >= 2 {
-
-			switch matches[1] {
-			case "1-0:1.7.0":
-				v, _ := strconv.ParseFloat(matches[2], 64)
-				fields["electricity_actual_usage"] = v
-			case "1-0:1.8.1":
-				v, _ := strconv.ParseFloat(matches[2], 64)
-				fields["electricity_total_usage_normal_tariff"] = v
-			case "1-0:1.8.2":
-				v, _ := strconv.ParseFloat(matches[2], 64)
-				fields["electricity_total_usage_low_tariff"] = v
-			case "0-1:24.2.1":
-				v, _ := strconv.ParseFloat(matches[2], 64)
-				fields["gas_total_usage"] = v
-			}
-
-		}
+		bp.AddPoint(pt)
+		err = influx_client.Write(bp)
 	}
 
 	if err = scanner.Err(); err != nil {
