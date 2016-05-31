@@ -10,9 +10,9 @@ Usage of ./carrot:
   -device string
         specify the device (default "/dev/ttyUSB0")
   -influx-db string
-        specify InfluxDB database (default "rommel")
+        specify InfluxDB database (default "carrot")
   -influx-host string
-        specify host of InfluxDB (default "http://mon.mijnbaopt.nl:8086")
+        specify host of InfluxDB (default "http://localhost:8086")
   -influx-password string
         specify InfluxDB password
   -influx-user string
