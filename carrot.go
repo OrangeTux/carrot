@@ -14,10 +14,10 @@ func main() {
 	var device = flag.String("device", "/dev/ttyUSB0", "specify the device")
 	var baudrate = flag.Int("baudrate", 115200, "specify the baudrate")
 
-	var influxdb_host = flag.String("influx-host", "http://mon.mijnbaopt.nl:8086", "specify host of InfluxDB")
+	var influxdb_host = flag.String("influx-host", "http://localhost.nl:8086", "specify host of InfluxDB")
 	var influxdb_user = flag.String("influx-user", "", "specify InfluxDB user")
 	var influxdb_pass = flag.String("influx-password", "", "specify InfluxDB password")
-	var influxdb_db = flag.String("influx-db", "rommel", "specify InfluxDB database")
+	var influxdb_db = flag.String("influx-db", "carrot", "specify InfluxDB database")
 
 	flag.Parse()
 
