@@ -3,21 +3,22 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 type Telegram struct {
-	EquipmentId               int     // 0-0:96.1.1
-	PowerUsedLowTariff        float64 // 1-0:1.8.1
-	PowerUsedNormalTariff     float64 // 1-0:1.8.2
-	PowerProducedLowTariff    float64 // 1-0:2.8.1
-	PowerProducedNormalTariff float64 // 1-0:2.8.2
-	CurrentTariff             int     // 0-0:96.14.0
-	CurrentPowerUsage         float64 // 1-0:1.7.0
-	CurrentPowerProduced      float64 // 1-0:2.7.0
-	GasUsed                   float64 // 0-1:24.2.1
+	EquipmentId               int     `dsmr:"0-0:96.1.1"`
+	PowerUsedLowTariff        float64 `dsmr:"1-0:1.8.1"`
+	PowerUsedNormalTariff     float64 `dsmr:"1-0:1.8.2"`
+	PowerProducedLowTariff    float64 `dsmr:"1-0:2.8.1"`
+	PowerProducedNormalTariff float64 `dsmr:"1-0:2.8.2"`
+	CurrentTariff             int     `dsmr:"0-0:96.14.0"`
+	CurrentPowerUsage         float64 `dsmr:"1-0:1.7.0"`
+	CurrentPowerProduced      float64 `dsmr:"1-0:2.7.0"`
+	GasUsed                   float64 `dsmr:"0-1:24.2.1"`
 }
 
 func (t *Telegram) UnmarshalBinary(data []byte) error {
@@ -56,22 +57,27 @@ func (t *Telegram) UnmarshalBinary(data []byte) error {
 
 		value := values[len(values)-1][1]
 
-		switch id {
-		case "0-0:96.1.1":
-			v, _ := strconv.Atoi(value)
-			t.EquipmentId = v
-		case "1-0:1.7.0":
-			v, _ := strconv.ParseFloat(value, 64)
-			t.CurrentPowerUsage = v
-		case "1-0:1.8.1":
-			v, _ := strconv.ParseFloat(value, 64)
-			t.PowerUsedLowTariff = v
-		case "1-0:1.8.2":
-			v, _ := strconv.ParseFloat(value, 64)
-			t.PowerUsedNormalTariff = v
-		case "0-1:24.2.1":
-			v, _ := strconv.ParseFloat(value, 64)
-			t.GasUsed = v
+		type_value := reflect.ValueOf(*t)
+
+		// Iterate over Telegram's fields to find the field which tag
+		// matches with the id from the telegram. Then the value
+		// extracted from the telegraf is assigned to that field.
+		for i := 0; i < type_value.NumField(); i++ {
+
+			if type_value.Type().Field(i).Tag.Get("dsmr") == id {
+				field := reflect.ValueOf(t).Elem().Field(i)
+
+				if field.Kind() == reflect.Int {
+					v, _ := strconv.ParseInt(value, 10, 64)
+					reflect.ValueOf(t).Elem().Field(i).SetInt(v)
+				}
+
+				if field.Kind() == reflect.Float64 {
+					v, _ := strconv.ParseFloat(value, 64)
+					reflect.ValueOf(t).Elem().Field(i).SetFloat(v)
+				}
+
+			}
 		}
 	}
 
