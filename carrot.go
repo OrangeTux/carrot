@@ -14,10 +14,10 @@ func main() {
 	var device = flag.String("device", "/dev/ttyUSB0", "specify the device")
 	var baudrate = flag.Int("baudrate", 115200, "specify the baudrate")
 
-	var influxdb_host = flag.String("influx-host", "http://localhost.nl:8086", "specify host of InfluxDB")
+	var influxdb_host = flag.String("influx-host", "http://mon.mijnbaopt.nl:8086", "specify host of InfluxDB")
 	var influxdb_user = flag.String("influx-user", "", "specify InfluxDB user")
 	var influxdb_pass = flag.String("influx-password", "", "specify InfluxDB password")
-	var influxdb_db = flag.String("influx-db", "carrot", "specify InfluxDB database")
+	var influxdb_db = flag.String("influx-db", "rommel", "specify InfluxDB database")
 
 	flag.Parse()
 
@@ -69,13 +69,17 @@ func main() {
 			map[string]string{"equiment_id": strconv.Itoa(t.EquipmentId)},
 			map[string]interface{}{
 				"electricity_actual_usage":              t.CurrentPowerUsage,
-				"electricity_total_usage_normal_tariff": t.PowerUsedNormalTariff,
-				"electricity_total_usage_low_tariff":    t.PowerUsedLowTariff,
+				"electricity_total_usage_normal_tariff": t.PowerUsedTariff2,
+				"electricity_total_usage_low_tariff":    t.PowerUsedTariff1,
 				"gas_total_usage":                       t.GasUsed,
 			})
 
 		bp.AddPoint(pt)
 		err = influx_client.Write(bp)
+
+		if err != nil {
+			panic(fmt.Sprintf("Could not write data: %s", err))
+		}
 	}
 
 	if err = scanner.Err(); err != nil {

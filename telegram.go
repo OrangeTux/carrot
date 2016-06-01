@@ -10,15 +10,20 @@ import (
 )
 
 type Telegram struct {
-	EquipmentId               int     `dsmr:"0-0:96.1.1"`
-	PowerUsedLowTariff        float64 `dsmr:"1-0:1.8.1"`
-	PowerUsedNormalTariff     float64 `dsmr:"1-0:1.8.2"`
-	PowerProducedLowTariff    float64 `dsmr:"1-0:2.8.1"`
-	PowerProducedNormalTariff float64 `dsmr:"1-0:2.8.2"`
-	CurrentTariff             int     `dsmr:"0-0:96.14.0"`
-	CurrentPowerUsage         float64 `dsmr:"1-0:1.7.0"`
-	CurrentPowerProduced      float64 `dsmr:"1-0:2.7.0"`
-	GasUsed                   float64 `dsmr:"0-1:24.2.1"`
+	ProtocolVersion       float64 `dsmr:"1-3:0.2.8"`
+	EquipmentId           int     `dsmr:"0-0:96.1.1"`
+	PowerUsedTariff1      float64 `dsmr:"1-0:1.8.1"`
+	PowerUsedTariff2      float64 `dsmr:"1-0:1.8.2"`
+	PowerProducedTariff1  float64 `dsmr:"1-0:2.8.1"`
+	PowerProducedTariff2  float64 `dsmr:"1-0:2.8.2"`
+	PowerCurrentTariff    int     `dsmr:"0-0:96.14.0"`
+	PowerFailureCount     int     `dsmr:"0-0:96.7.21"`
+	PowerFailureLongCount int     `dsmr:"0-0:96.7.9"`
+	VoltageSagsL1         int     `dsmr:"1-0:32.32.0"`
+	VoltageSwellsL1       int     `dsmr:"1-0:32.36.0"`
+	CurrentPowerUsage     float64 `dsmr:"1-0:1.7.0"`
+	CurrentPowerProduced  float64 `dsmr:"1-0:2.7.0"`
+	GasUsed               float64 `dsmr:"0-1:24.2.1"`
 }
 
 func (t *Telegram) UnmarshalBinary(data []byte) error {
@@ -65,6 +70,13 @@ func (t *Telegram) UnmarshalBinary(data []byte) error {
 		for i := 0; i < type_value.NumField(); i++ {
 
 			if type_value.Type().Field(i).Tag.Get("dsmr") == id {
+				// Protocol is send as 40, but should be 4.0.
+				if id == "1-3:0.2.8" {
+					v, _ := strconv.ParseFloat(value, 64)
+					reflect.ValueOf(t).Elem().Field(i).SetFloat(v / 10)
+					continue
+				}
+
 				field := reflect.ValueOf(t).Elem().Field(i)
 
 				if field.Kind() == reflect.Int {
@@ -76,7 +88,6 @@ func (t *Telegram) UnmarshalBinary(data []byte) error {
 					v, _ := strconv.ParseFloat(value, 64)
 					reflect.ValueOf(t).Elem().Field(i).SetFloat(v)
 				}
-
 			}
 		}
 	}
