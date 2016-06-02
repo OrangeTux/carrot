@@ -14,19 +14,18 @@ func main() {
 	var device = flag.String("device", "/dev/ttyUSB0", "specify the device")
 	var baudrate = flag.Int("baudrate", 115200, "specify the baudrate")
 
-	var influxdb_host = flag.String("influx-host", "http://mon.mijnbaopt.nl:8086", "specify host of InfluxDB")
+	var influxdb_host = flag.String("influx-host", "http://localhost:8086", "specify host of InfluxDB")
 	var influxdb_user = flag.String("influx-user", "", "specify InfluxDB user")
 	var influxdb_pass = flag.String("influx-password", "", "specify InfluxDB password")
-	var influxdb_db = flag.String("influx-db", "rommel", "specify InfluxDB database")
+	var influxdb_db = flag.String("influx-db", "carrot", "specify InfluxDB database")
 
 	flag.Parse()
 
-	serial_config := &serial.Config{
+	s, err := serial.OpenPort(&serial.Config{
 		Name: *device,
 		Baud: *baudrate,
-	}
+	})
 
-	s, err := serial.OpenPort(serial_config)
 	if err != nil {
 		panic(fmt.Sprintf("Could not open serial port '%s': %s", device, err))
 	}
@@ -39,25 +38,24 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Could not create InfluxDB client: %s", err))
 	}
-	influx_client.Close()
+	defer influx_client.Close()
 
 	_, _, err = influx_client.Ping(2)
 
 	if err != nil {
-		panic(fmt.Sprintf("Cant ping InfluxDB: %s", err))
+		panic(fmt.Sprintf("Can't ping InfluxDB: %s", err))
 	}
 
-	batch_point_config := client.BatchPointsConfig{
+	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  *influxdb_db,
 		Precision: "s",
-	}
+	})
 
 	scanner := bufio.NewScanner(bufio.NewReader(s))
 	scanner.Split(SplitTelegram)
 
-	bp, err := client.NewBatchPoints(batch_point_config)
 	if err != nil {
-		panic(fmt.Sprintf("Could not create batch poitns: %s", err))
+		panic(fmt.Sprintf("Could not create batch points: %s", err))
 	}
 
 	for scanner.Scan() {
@@ -66,7 +64,7 @@ func main() {
 
 		pt, _ := client.NewPoint(
 			"energy_usage",
-			map[string]string{"equiment_id": strconv.Itoa(t.EquipmentId)},
+			map[string]string{"equipment_id": strconv.Itoa(t.EquipmentId)},
 			map[string]interface{}{
 				"electricity_actual_usage":              t.CurrentPowerUsage,
 				"electricity_total_usage_normal_tariff": t.PowerUsedTariff2,
