@@ -76,7 +76,7 @@ func main() {
 		err = influx_client.Write(bp)
 
 		if err != nil {
-			panic(fmt.Sprintf("Could not write data: %s", err))
+			fmt.Sprintf("Could not write data: %s", err)
 		}
 	}
 
