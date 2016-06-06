@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strconv"
 
 	"github.com/influxdata/influxdb/client/v2"
+	"github.com/orangetux/carrot/outputs"
 	"github.com/tarm/serial"
 )
 
@@ -14,12 +17,22 @@ func main() {
 	var device = flag.String("device", "/dev/ttyUSB0", "specify the device")
 	var baudrate = flag.Int("baudrate", 115200, "specify the baudrate")
 
-	var influxdb_host = flag.String("influx-host", "http://localhost:8086", "specify host of InfluxDB")
-	var influxdb_user = flag.String("influx-user", "", "specify InfluxDB user")
-	var influxdb_pass = flag.String("influx-password", "", "specify InfluxDB password")
-	var influxdb_db = flag.String("influx-db", "carrot", "specify InfluxDB database")
+	var config_file = flag.String("conf", "carrot.conf", "path to config")
 
 	flag.Parse()
+
+	f, err := os.Open(*config_file)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+
+	i, err := output.NewOutput(b)
 
 	s, err := serial.OpenPort(&serial.Config{
 		Name: *device,
@@ -30,24 +43,8 @@ func main() {
 		panic(fmt.Sprintf("Could not open serial port '%s': %s", device, err))
 	}
 
-	influx_client, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr:     *influxdb_host,
-		Username: *influxdb_user,
-		Password: *influxdb_pass,
-	})
-	if err != nil {
-		panic(fmt.Sprintf("Could not create InfluxDB client: %s", err))
-	}
-	defer influx_client.Close()
-
-	_, _, err = influx_client.Ping(2)
-
-	if err != nil {
-		panic(fmt.Sprintf("Can't ping InfluxDB: %s", err))
-	}
-
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database:  *influxdb_db,
+		Database:  i.Config.C.Database,
 		Precision: "s",
 	})
 
@@ -73,7 +70,7 @@ func main() {
 			})
 
 		bp.AddPoint(pt)
-		err = influx_client.Write(bp)
+		i.Write(bp)
 
 		if err != nil {
 			fmt.Sprintf("Could not write data: %s", err)
